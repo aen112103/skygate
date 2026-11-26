@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SkyGate 機場實戰英語互動教室 | Airport English Hub</title>
+  <!-- 載入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 載入 Google Fonts: Inter & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Inter"', '"Noto Sans TC"', 'sans-serif'],
+          },
+          colors: {
+            navy: {
+              800: '#102A43',
+              900: '#0A192F',
+            },
+            skybrand: {
+              50: '#F0F7FF',
+              100: '#E0EFFE',
+              500: '#0284C7',
+              600: '#0369A1',
+            },
+            amberbrand: {
+              50: '#FFFBEB',
+              100: '#FEF3C7',
+              500: '#F59E0B',
+              600: '#D97706',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 基礎與自訂航空登機證視覺風格 */
+    body {
+      background-color: #F4F7FA;
+      color: #1E293B;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 登機證左右半圓缺口與虛線效果 */
+    .boarding-pass-divider {
+      position: relative;
+      border-top: 2px dashed #CBD5E1;
+    }
+    .boarding-pass-divider::before,
+    .boarding-pass-divider::after {
+      content: '';
+      position: absolute;
+      top: -12px;
+      width: 24px;
+      height: 24px;
+      background-color: #F4F7FA;
+      border-radius: 9999px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+    }
+    .boarding-pass-divider::before {
+      left: -28px;
+    }
+    .boarding-pass-divider::after {
+      right: -28px;
+    }
+
+    /* 蓋章動畫效果 */
+    @keyframes stampPop {
+      0% {
+        opacity: 0;
+        transform: scale(2.5) rotate(-18deg);
+      }
+      60% {
+        opacity: 1;
+        transform: scale(0.92) rotate(-10deg);
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1) rotate(-12deg);
+      }
+    }
+    .animate-stamp {
+      animation: stampPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    /* 語音波紋動畫 */
+    @keyframes pulseRing {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.08); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .speaking-active {
+      animation: pulseRing 1.2s infinite ease-in-out;
+    }
+
+    /* 彩帶粒子畫布 */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-sky-200 selection:text-navy-900">
+
+  <!-- 慶祝彩帶畫布 -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- 頂部導覽列（簡潔適合 Google Sites 嵌入） -->
+  <header class="bg-navy-900 text-white shadow-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchView('home')">
+        <div class="w-9 h-9 rounded-xl bg-sky-500 flex items-center justify-center shadow-inner">
+          <!-- 飛機圖示 SVG -->
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </div>
+        <div>
+          <span class="font-extrabold tracking-wide text-base sm:text-lg block leading-tight">SKYGATE 機場實戰英語</span>
+          <span class="text-[11px] text-sky-300 tracking-wider uppercase block">Interactive Aviation English</span>
+        </div>
+      </div>
+
+      <!-- 右側工具列：語速切換 & 返回主選單 -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- 語速切換按鈕 -->
+        <button id="speed-toggle-btn" onclick="toggleSpeechRate()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-navy-800 hover:bg-slate-700 border border-slate-700 text-xs sm:text-sm font-medium transition">
+          <span>🐢/🐇 語速：</span>
+          <span id="speed-label" class="text-sky-300 font-bold">正常 (1.0x)</span>
+        </button>
+
+        <!-- 返回主選單按鈕 (在分流頁面顯示) -->
+        <button id="back-home-btn" onclick="switchView('home')" class="hidden items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs sm:text-sm font-bold shadow transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          <span>切換情境</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 提示訊息 Toast (取代 alert) -->
+  <div id="toast-box" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden max-w-md w-[92%] bg-navy-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 transition-all">
+    <span id="toast-icon" class="text-xl">💡</span>
+    <p id="toast-message" class="text-sm font-medium leading-snug"></p>
+  </div>
+
+  <!-- 主要內容容器 -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 py-6 sm:py-8">
+
+    <!-- ========================================== -->
+    <!-- 1. 程度分流入口 (HOME / DIFFERENTIATED STREAMING) -->
+    <!-- ========================================== -->
+    <section id="view-home" class="space-y-8">
+      <!-- 航廈歡迎看板 -->
+      <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 relative overflow-hidden">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div class="space-y-3 max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-50 text-sky-700 text-xs font-bold border border-sky-200">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              BOARDING NOW • 選擇你的航廈任務
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
+              準備好出發了嗎？選擇適合你的機場英語挑戰
+            </h1>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+              無論你是第一次出國的旅遊新手，還是需要處理突發狀況的商務旅客，請根據你的學習目標選擇下方的登機門，透過「句型積木」與「真實情境演練」自信開口！
+            </p>
+          </div>
+          <!-- 航廈資訊小卡 -->
+          <div class="bg-navy-900 text-white rounded-2xl p-4 sm:p-5 shrink-0 min-w-[230px] shadow-md">
+            <div class="flex justify-between items-center text-xs text-slate-400 border-b border-slate-700 pb-2 mb-3">
+              <span>TERMINAL 1 & 2</span>
+              <span class="text-emerald-400 font-mono font-bold">ON TIME</span>
+            </div>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-slate-400">GATE A1</span>
+                <span class="font-bold text-sky-300">基礎報到與托運</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">GATE B2</span>
+                <span class="font-bold text-amber-300">進階延誤與協商</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 雙軌分流卡片區 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 選項 A 卡片 -->
+        <div class="group bg-white rounded-3xl border-2 border-slate-200 hover:border-sky-500 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden">
+          <div class="p-6 sm:p-8 space-y-5">
+            <div class="flex items-center justify-between">
+              <span class="px-3.5 py-1.5 rounded-xl bg-sky-100 text-sky-800 font-extrabold text-xs tracking-wider">
+                GATE A1 • 基礎生存
+              </span>
+              <span class="text-3xl">🧳</span>
+            </div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-extrabold text-navy-900 group-hover:text-sky-600 transition">
+                登機報到與托運
+              </h2>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
+                Check-in & Baggage Drop
+              </p>
+            </div>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+              專注於<strong>單一核心句型架構</strong>的理解與關鍵字替換。像拼積木一樣，學會自由替換「目的地、行李件數、座位偏好」，輕鬆完成櫃檯報到！
+            </p>
+            <ul class="space-y-2 text-sm text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <li class="flex items-center gap-2">
+                <span class="text-sky-500 font-bold">✓</span> 視覺化拆解「固定句型骨架」與「替換變數」
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-sky-500 font-bold">✓</span> 真人語音跟讀（支援正常 / 慢速切換）
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-sky-500 font-bold">✓</span> 模擬地勤報到任務與登機證蓋章認證
+              </li>
+            </ul>
+          </div>
+          <div class="px-6 sm:px-8 pb-6 sm:pb-8">
+            <button onclick="switchView('optionA')" class="w-full py-4 px-6 rounded-2xl bg-sky-600 hover:bg-sky-500 active:scale-[0.99] text-white font-bold text-base shadow-md shadow-sky-200 flex items-center justify-center gap-2 transition">
+              <span>前往 GATE A1 開始練習</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 選項 B 卡片 -->
+        <div class="group bg-white rounded-3xl border-2 border-slate-200 hover:border-amber-500 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden">
+          <div class="p-6 sm:p-8 space-y-5">
+            <div class="flex items-center justify-between">
+              <span class="px-3.5 py-1.5 rounded-xl bg-amber-100 text-amber-800 font-extrabold text-xs tracking-wider">
+                GATE B2 • 進階應變
+              </span>
+              <span class="text-3xl">⏱️</span>
+            </div>
+            <div>
+              <h2 class="text-xl sm:text-2xl font-extrabold text-navy-900 group-hover:text-amber-600 transition">
+                轉機延誤與改票協商
+              </h2>
+              <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-0.5">
+                Flight Delay & Rebooking Negotiation
+              </p>
+            </div>
+            <p class="text-slate-600 text-sm sm:text-base leading-relaxed">
+              專注於<strong>兩種溝通策略的比較與決策</strong>。面對班機延誤或客滿，分析「溫和禮貌詢問」與「明確需求協商」的語氣差異，做出最有效的應變！
+            </p>
+            <ul class="space-y-2 text-sm text-slate-700 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <li class="flex items-center gap-2">
+                <span class="text-amber-500 font-bold">✓</span> 雙策略並排比較：禮貌度 vs. 解決效率指標
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-amber-500 font-bold">✓</span> 掌握改簽下班機、住宿餐券、行李直掛關鍵片語
+              </li>
+              <li class="flex items-center gap-2">
+                <span class="text-amber-500 font-bold">✓</span> 突發危機情境決策挑戰，選出最佳得體回應
+              </li>
+            </ul>
+          </div>
+          <div class="px-6 sm:px-8 pb-6 sm:pb-8">
+            <button onclick="switchView('optionB')" class="w-full py-4 px-6 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-bold text-base shadow-md shadow-amber-200 flex items-center justify-center gap-2 transition">
+              <span>前往 GATE B2 開始挑戰</span>
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. 選項 A：基礎生存 - 登機報到與托運 -->
+    <!-- ========================================== -->
+    <section id="view-optionA" class="hidden space-y-6">
+      <!-- 頂部情境標題列 -->
+      <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-sky-100 text-sky-800 text-xs font-extrabold">GATE A1 基礎挑戰</span>
+            <span class="text-xs text-slate-400 font-semibold">句型積木組裝模式</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-black text-navy-900 mt-1">航空櫃檯報到與行李托運 (Check-in Counter)</h2>
+        </div>
+        <button onclick="switchView('optionB')" class="self-start sm:self-center px-4 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs sm:text-sm font-bold transition">
+          想挑戰更難的？切換至進階轉機協商 →
+        </button>
+      </div>
+
+      <!-- 主互動區：左側模擬舞台 + 右側句型解析表 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左側 (7欄)：機場情境模擬舞台 + 變數控制器 -->
+        <div class="lg:col-span-7 space-y-6">
+          
+          <!-- 視覺化登機證與地勤對話舞台 -->
+          <div class="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden relative">
+            <!-- 登機證頂部深藍標頭 -->
+            <div class="bg-navy-900 text-white px-6 py-4 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-sky-400 text-lg">✈</span>
+                <span class="font-extrabold tracking-widest text-sm">BOARDING PASS • 模擬登機證</span>
+              </div>
+              <span id="bp-flight-no" class="font-mono text-xs bg-navy-800 px-2.5 py-1 rounded-lg text-sky-300 border border-slate-700">FLIGHT JL-802</span>
+            </div>
+
+            <!-- 舞台內容區 -->
+            <div class="p-6 space-y-5 relative">
+              <!-- 通關蓋章視覺 (完成任務時顯示) -->
+              <div id="stamp-overlay-A" class="hidden absolute top-4 right-6 z-20 pointer-events-none">
+                <div class="border-4 border-emerald-600 text-emerald-600 px-4 py-1.5 rounded-xl font-black text-sm sm:text-base tracking-widest uppercase bg-white/90 shadow-lg animate-stamp">
+                  CHECK-IN APPROVED ✓
+                </div>
+              </div>
+
+              <!-- 地勤人員對話氣泡 -->
+              <div class="flex items-start gap-3.5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div class="w-11 h-11 rounded-2xl bg-sky-600 text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
+                  👩‍✈️
+                </div>
+                <div class="flex-1 space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-sky-700">地勤人員 Ground Staff</span>
+                    <button onclick="speakText('Good morning! Where are you flying to today, and how many bags are you checking in?')" class="text-xs px-2.5 py-1 rounded-lg bg-white hover:bg-sky-50 text-sky-700 border border-slate-200 font-semibold shadow-sm transition">
+                      🔊 聽地勤問話
+                    </button>
+                  </div>
+                  <p class="text-navy-900 font-bold text-sm sm:text-base">
+                    "Good morning! Where are you flying to today, and how many bags are you checking in?"
+                  </p>
+                  <p class="text-xs text-slate-500">早安！請問您今天要飛往哪裡，有幾件行李要托運呢？</p>
+                </div>
+              </div>
+
+              <!-- 登機證關鍵資訊動態看板 -->
+              <div class="grid grid-cols-3 gap-3 bg-sky-50/70 p-4 rounded-2xl border border-sky-100 text-center">
+                <div>
+                  <span class="text-[11px] font-bold text-slate-400 uppercase block">DESTINATION 目的地</span>
+                  <span id="bp-dest-code" class="text-xl sm:text-2xl font-black text-navy-900 block mt-0.5">TYO</span>
+                  <span id="bp-dest-name" class="text-xs font-semibold text-sky-700">Tokyo 東京</span>
+                </div>
+                <div class="border-x border-sky-200/80">
+                  <span class="text-[11px] font-bold text-slate-400 uppercase block">BAGGAGE 托運行李</span>
+                  <span id="bp-bag-count" class="text-xl sm:text-2xl font-black text-navy-900 block mt-0.5">1 PC</span>
+                  <span id="bp-bag-desc" class="text-xs font-semibold text-sky-700">1 件托運</span>
+                </div>
+                <div>
+                  <span class="text-[11px] font-bold text-slate-400 uppercase block">SEAT PREF 座位偏好</span>
+                  <span id="bp-seat-code" class="text-xl sm:text-2xl font-black text-navy-900 block mt-0.5">WINDOW</span>
+                  <span id="bp-seat-desc" class="text-xs font-semibold text-sky-700">靠窗座位</span>
+                </div>
+              </div>
+
+              <!-- 登機證虛線分隔 -->
+              <div class="boarding-pass-divider my-2"></div>
+
+              <!-- 旅客即時組裝英文句子區 (句型積木視覺化) -->
+              <div class="space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
+                    🧩 你的即時組合英文句子（點擊色塊可觀察替換詞彙）
+                  </span>
+                  <div class="flex items-center gap-2 text-[11px]">
+                    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-200 inline-block"></span>固定骨架</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-sky-200 inline-block"></span>替換變數</span>
+                  </div>
+                </div>
+
+                <!-- 組合句子顯示框 -->
+                <div class="p-4 sm:p-5 rounded-2xl bg-navy-900 text-white shadow-inner space-y-3">
+                  <p id="assembled-english" class="text-base sm:text-lg font-medium leading-relaxed">
+                    <!-- JS 動態填入帶色彩標籤的英文句子 -->
+                  </p>
+                  <p id="assembled-chinese" class="text-xs sm:text-sm text-sky-200 border-t border-slate-700 pt-2.5">
+                    <!-- JS 動態填入中文翻譯 -->
+                  </p>
+                </div>
+
+                <!-- 語音朗讀大按鈕 -->
+                <button id="speak-assembled-btn" onclick="speakAssembledSentence()" class="w-full py-3.5 px-5 rounded-2xl bg-sky-600 hover:bg-sky-500 active:scale-[0.99] text-white font-bold text-sm sm:text-base shadow-md flex items-center justify-center gap-2.5 transition">
+                  <span class="text-xl">🔊</span>
+                  <span>朗讀這句英文 (Listen & Repeat)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 三大情境變數控制面板 -->
+          <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-5">
+            <h3 class="text-base sm:text-lg font-extrabold text-navy-900 flex items-center gap-2">
+              <span>🎛️</span>
+              <span>調整情境變數（點擊按鈕即時替換句型積木）</span>
+            </h3>
+
+            <!-- 變數 1：目的地 -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                1. 選擇目的地 / 航班 (Destination)
+              </label>
+              <div class="grid grid-cols-3 gap-2.5" id="ctrl-dest">
+                <button type="button" data-val="tokyo" onclick="setCheckinVar('dest', 'tokyo')" class="var-btn-dest py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🇯🇵 Tokyo<br><span class="text-xs font-normal opacity-80">東京 (JL-802)</span>
+                </button>
+                <button type="button" data-val="london" onclick="setCheckinVar('dest', 'london')" class="var-btn-dest py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🇬🇧 London<br><span class="text-xs font-normal opacity-80">倫敦 (BR-067)</span>
+                </button>
+                <button type="button" data-val="newyork" onclick="setCheckinVar('dest', 'newyork')" class="var-btn-dest py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🇺🇸 New York<br><span class="text-xs font-normal opacity-80">紐約 (CI-012)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 變數 2：托運行李件數 -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                2. 選擇托運行李件數 (Checked Baggage)
+              </label>
+              <div class="grid grid-cols-3 gap-2.5" id="ctrl-bags">
+                <button type="button" data-val="0" onclick="setCheckinVar('bags', '0')" class="var-btn-bags py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🎒 0 件托運<br><span class="text-xs font-normal opacity-80">僅隨身 carry-on</span>
+                </button>
+                <button type="button" data-val="1" onclick="setCheckinVar('bags', '1')" class="var-btn-bags py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🧳 1 件托運<br><span class="text-xs font-normal opacity-80">one bag</span>
+                </button>
+                <button type="button" data-val="2" onclick="setCheckinVar('bags', '2')" class="var-btn-bags py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🧳🧳 2 件托運<br><span class="text-xs font-normal opacity-80">two bags</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 變數 3：座位偏好 -->
+            <div class="space-y-2">
+              <label class="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                3. 選擇座位偏好 (Seat Preference)
+              </label>
+              <div class="grid grid-cols-2 gap-2.5" id="ctrl-seat">
+                <button type="button" data-val="window" onclick="setCheckinVar('seat', 'window')" class="var-btn-seat py-3 px-4 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🪟 靠窗座位 (a window seat)
+                </button>
+                <button type="button" data-val="aisle" onclick="setCheckinVar('seat', 'aisle')" class="var-btn-seat py-3 px-4 rounded-xl border-2 font-bold text-sm transition text-center">
+                  🚶 靠走道座位 (an aisle seat)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側 (5欄)：任務挑戰鷹架 + 句型結構解析表 -->
+        <div class="lg:col-span-5 space-y-6">
+          
+          <!-- 實戰報到任務卡 (Scaffolding Task) -->
+          <div class="bg-gradient-to-br from-sky-50 to-indigo-50 rounded-3xl p-6 border-2 border-sky-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="px-3 py-1 rounded-full bg-sky-600 text-white text-xs font-extrabold tracking-wide">
+                🎯 櫃檯實戰任務 #<span id="task-a-number">1</span>
+              </span>
+              <button onclick="generateNewTaskA()" class="text-xs font-bold text-sky-700 hover:text-sky-900 underline">
+                🔄 換一題任務
+              </button>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl border border-sky-100 shadow-xs space-y-2">
+              <p class="text-xs font-bold text-slate-400">請根據下方情境，調整左側按鈕並送出回答：</p>
+              <p id="task-a-prompt" class="text-base font-extrabold text-navy-900 leading-snug">
+                <!-- JS 動態生成任務說明 -->
+              </p>
+            </div>
+
+            <!-- 鷹架提示回饋區 -->
+            <div id="task-a-feedback" class="hidden p-4 rounded-2xl text-sm font-medium leading-relaxed border">
+              <!-- JS 動態顯示鷹架提示或成功訊息 -->
+            </div>
+
+            <button onclick="verifyTaskA()" class="w-full py-4 px-5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-extrabold text-base shadow-md shadow-emerald-200 flex items-center justify-center gap-2 transition">
+              <span>🎙️ 向地勤開口說 (Submit Check-in)</span>
+            </button>
+          </div>
+
+          <!-- 句型結構與關鍵詞彙對照表 -->
+          <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-4">
+            <h3 class="text-base font-extrabold text-navy-900 flex items-center gap-2">
+              <span>📚</span>
+              <span>句型骨架與替換詞彙解析表</span>
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr class="border-b-2 border-slate-200 text-xs text-slate-500 uppercase">
+                    <th class="py-2.5 pr-2">積木模組</th>
+                    <th class="py-2.5 px-2">英文句型與關鍵字</th>
+                    <th class="py-2.5 pl-2">中文解析</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs sm:text-sm">
+                  <tr>
+                    <td class="py-3 pr-2 font-bold text-sky-700 whitespace-nowrap">1. 表明目的</td>
+                    <td class="py-3 px-2 font-mono text-navy-900">
+                      I'm flying to <span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">[城市]</span>.
+                    </td>
+                    <td class="py-3 pl-2 text-slate-600">我要飛往某地（用現在進行式表計畫）。</td>
+                  </tr>
+                  <tr>
+                    <td class="py-3 pr-2 font-bold text-sky-700 whitespace-nowrap">2. 說明行李</td>
+                    <td class="py-3 px-2 font-mono text-navy-900">
+                      I have <span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">[數量]</span> to check in.<br>
+                      <span class="text-slate-500 text-xs">或 I only have carry-on luggage.</span>
+                    </td>
+                    <td class="py-3 pl-2 text-slate-600">我有幾件行李要托運（注意單複數 bag / bags）。</td>
+                  </tr>
+                  <tr>
+                    <td class="py-3 pr-2 font-bold text-sky-700 whitespace-nowrap">3. 禮貌選位</td>
+                    <td class="py-3 px-2 font-mono text-navy-900">
+                      Could I have <span class="bg-sky-100 text-sky-800 px-1.5 py-0.5 rounded font-bold">[座位]</span>, please?
+                    </td>
+                    <td class="py-3 pl-2 text-slate-600">請問可以給我靠窗/走道位嗎？（window / aisle）</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. 選項 B：進階應變 - 轉機延誤與改票協商 -->
+    <!-- ========================================== -->
+    <section id="view-optionB" class="hidden space-y-6">
+      <!-- 頂部情境標題列 -->
+      <div class="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 text-xs font-extrabold">GATE B2 進階協商</span>
+            <span class="text-xs text-slate-400 font-semibold">雙策略語氣比較與決策</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-black text-navy-900 mt-1">轉機櫃檯協商與改票對決 (Transfer Desk)</h2>
+        </div>
+        <button onclick="switchView('optionA')" class="self-start sm:self-center px-4 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 text-xs sm:text-sm font-bold transition">
+          ← 返回基礎櫃檯報到練習
+        </button>
+      </div>
+
+      <!-- 突發延誤狀態看板 + 情境條件切換 -->
+      <div class="bg-navy-900 text-white rounded-3xl p-6 shadow-md space-y-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono text-xs font-extrabold animate-pulse">
+              ⚠ MISSED CONNECTION
+            </span>
+            <span class="text-sm sm:text-base font-bold text-slate-200">
+              前段班機延誤 2 小時，你已錯過原訂轉機航班！
+            </span>
+          </div>
+          <span class="text-xs text-slate-400 font-mono">LOCATION: TRANSFER DESK B2</span>
+        </div>
+
+        <!-- 情境條件切換按鈕 -->
+        <div class="space-y-2.5">
+          <span class="text-xs font-bold text-amber-300 uppercase tracking-wider block">
+            📌 請選擇你目前的「緊急程度與核心需求」來比較兩種溝通策略：
+          </span>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button id="scen-b-btn-1" onclick="setScenarioB(1)" class="p-4 rounded-2xl border-2 text-left transition flex items-start gap-3">
+              <span class="text-2xl">💼</span>
+              <div>
+                <div class="font-extrabold text-sm sm:text-base">情況一：明早有重要會議，必須今晚抵達</div>
+                <div class="text-xs opacity-80 mt-0.5">需求：爭取最快替代航班（含合作航空轉簽）與行李優先轉運</div>
+              </div>
+            </button>
+            <button id="scen-b-btn-2" onclick="setScenarioB(2)" class="p-4 rounded-2xl border-2 text-left transition flex items-start gap-3">
+              <span class="text-2xl">🏨</span>
+              <div>
+                <div class="font-extrabold text-sm sm:text-base">情況二：今晚已無任何班機，需過夜安置</div>
+                <div class="text-xs opacity-80 mt-0.5">需求：確認明早第一班機位，並申請航空公司免費住宿與餐券</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 核心對比區：雙策略並排比較 (沈穩藍 vs 活力琥珀橘) -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- 策略 A：溫和禮貌詢問式 (沈穩藍主題) -->
+        <div class="bg-white rounded-3xl border-2 border-sky-200 shadow-sm overflow-hidden flex flex-col justify-between">
+          <div>
+            <div class="bg-sky-600 text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-sky-100 block">STRATEGY A • 溫和禮貌詢問式</span>
+                <h3 class="text-lg font-extrabold">Could you possibly...? 委婉請求</h3>
+              </div>
+              <span class="text-2xl">🕊️</span>
+            </div>
+
+            <div class="p-6 space-y-5">
+              <!-- 語氣與效率視覺化指標條 -->
+              <div class="bg-sky-50/70 p-4 rounded-2xl border border-sky-100 space-y-3">
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-sky-900">禮貌親和度 (Politeness)</span>
+                    <span id="strat-a-polite-val" class="text-sky-700">95%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-sky-200/60 rounded-full overflow-hidden">
+                    <div id="strat-a-polite-bar" class="h-full bg-sky-600 rounded-full transition-all duration-500" style="width: 95%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-sky-900">立場明確度 (Assertiveness)</span>
+                    <span id="strat-a-assert-val" class="text-sky-700">45%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-sky-200/60 rounded-full overflow-hidden">
+                    <div id="strat-a-assert-bar" class="h-full bg-sky-500 rounded-full transition-all duration-500" style="width: 45%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-sky-900">當前情境解決效率 (Effectiveness)</span>
+                    <span id="strat-a-eff-val" class="text-sky-700">60%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-sky-200/60 rounded-full overflow-hidden">
+                    <div id="strat-a-eff-bar" class="h-full bg-sky-700 rounded-full transition-all duration-500" style="width: 60%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 對話範例框 -->
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-400 uppercase">💬 策略 A 實際英文表達</span>
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <p id="strat-a-en" class="text-navy-900 font-bold text-sm sm:text-base leading-relaxed"></p>
+                  <p id="strat-a-zh" class="text-xs sm:text-sm text-slate-600 border-t border-slate-200 pt-2"></p>
+                </div>
+              </div>
+
+              <!-- 適用分析 -->
+              <div class="text-xs sm:text-sm text-slate-600 bg-sky-50/40 p-3.5 rounded-xl border border-sky-100">
+                <strong class="text-sky-800">💡 老師點評：</strong>
+                <span id="strat-a-note"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 pb-6">
+            <button onclick="speakStrategy('A')" class="w-full py-3 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow transition">
+              <span>🔊 聽策略 A 發音</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 策略 B：明確需求協商式 (活力琥珀橘主題) -->
+        <div class="bg-white rounded-3xl border-2 border-amber-200 shadow-sm overflow-hidden flex flex-col justify-between">
+          <div>
+            <div class="bg-amber-500 text-white px-6 py-4 flex items-center justify-between">
+              <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-amber-100 block">STRATEGY B • 明確需求協商式</span>
+                <h3 class="text-lg font-extrabold">Since my flight was delayed, I need...</h3>
+              </div>
+              <span class="text-2xl">⚡</span>
+            </div>
+
+            <div class="p-6 space-y-5">
+              <!-- 語氣與效率視覺化指標條 -->
+              <div class="bg-amber-50/70 p-4 rounded-2xl border border-amber-100 space-y-3">
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-amber-900">禮貌親和度 (Politeness)</span>
+                    <span id="strat-b-polite-val" class="text-amber-700">75%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-amber-200/60 rounded-full overflow-hidden">
+                    <div id="strat-b-polite-bar" class="h-full bg-amber-400 rounded-full transition-all duration-500" style="width: 75%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-amber-900">立場明確度 (Assertiveness)</span>
+                    <span id="strat-b-assert-val" class="text-amber-700">95%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-amber-200/60 rounded-full overflow-hidden">
+                    <div id="strat-b-assert-bar" class="h-full bg-amber-500 rounded-full transition-all duration-500" style="width: 95%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-amber-900">當前情境解決效率 (Effectiveness)</span>
+                    <span id="strat-b-eff-val" class="text-amber-700">92%</span>
+                  </div>
+                  <div class="w-full h-2.5 bg-amber-200/60 rounded-full overflow-hidden">
+                    <div id="strat-b-eff-bar" class="h-full bg-amber-600 rounded-full transition-all duration-500" style="width: 92%"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 對話範例框 -->
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-400 uppercase">💬 策略 B 實際英文表達</span>
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <p id="strat-b-en" class="text-navy-900 font-bold text-sm sm:text-base leading-relaxed"></p>
+                  <p id="strat-b-zh" class="text-xs sm:text-sm text-slate-600 border-t border-slate-200 pt-2"></p>
+                </div>
+              </div>
+
+              <!-- 適用分析 -->
+              <div class="text-xs sm:text-sm text-slate-600 bg-amber-50/50 p-3.5 rounded-xl border border-amber-100">
+                <strong class="text-amber-800">💡 老師點評：</strong>
+                <span id="strat-b-note"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-6 pb-6">
+            <button onclick="speakStrategy('B')" class="w-full py-3 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm flex items-center justify-center gap-2 shadow transition">
+              <span>🔊 聽策略 B 發音</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 下半部：突發危機決策任務 + 關鍵片語拆解表 -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- 左側 (7欄)：互動決策任務 -->
+        <div class="lg:col-span-7 bg-white rounded-3xl p-6 border-2 border-amber-300 shadow-sm space-y-5 relative overflow-hidden">
+          <!-- 通關蓋章視覺 -->
+          <div id="stamp-overlay-B" class="hidden absolute top-4 right-5 z-20 pointer-events-none">
+            <div class="border-4 border-emerald-600 text-emerald-600 px-3.5 py-1 rounded-xl font-black text-xs sm:text-sm tracking-widest uppercase bg-white/95 shadow-lg animate-stamp">
+              PRIORITY REBOOKED ✓
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <span class="px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-extrabold">
+              🧠 轉機突發決策任務 #<span id="task-b-number">1</span>
+            </span>
+            <button onclick="nextTaskB()" class="text-xs font-bold text-amber-700 hover:text-amber-900 underline">
+              🔄 切換下一個危機情境
+            </button>
+          </div>
+
+          <!-- 突發狀況描述 -->
+          <div class="bg-amber-50/70 p-4 rounded-2xl border border-amber-200 space-y-1.5">
+            <span class="text-xs font-extrabold text-amber-800 uppercase">🚨 突發狀況描述：</span>
+            <p id="task-b-situation" class="text-sm sm:text-base font-bold text-navy-900 leading-relaxed"></p>
+          </div>
+
+          <!-- 三個選項按鈕 -->
+          <div class="space-y-3" id="task-b-options">
+            <!-- JS 動態生成三個選項 -->
+          </div>
+
+          <!-- 回饋解析區 -->
+          <div id="task-b-feedback" class="hidden p-4 rounded-2xl text-sm leading-relaxed border"></div>
+        </div>
+
+        <!-- 右側 (5欄)：關鍵片語拆解表格 -->
+        <div class="lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-slate-200 space-y-4">
+          <h3 class="text-base font-extrabold text-navy-900 flex items-center gap-2">
+            <span>🔑</span>
+            <span>轉機改票協商關鍵片語表</span>
+          </h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm">
+              <thead>
+                <tr class="border-b-2 border-slate-200 text-xs text-slate-500 uppercase">
+                  <th class="py-2.5 pr-2">核心英文片語</th>
+                  <th class="py-2.5 px-2">中文意思</th>
+                  <th class="py-2.5 pl-2">使用時機</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr>
+                  <td class="py-3 pr-2 font-bold text-navy-900">
+                    put me on the next available flight
+                    <button onclick="speakText('put me on the next available flight')" class="ml-1 text-sky-600 hover:text-sky-800">🔊</button>
+                  </td>
+                  <td class="py-3 px-2 text-slate-700">幫我安排下一班最快有機位的航班</td>
+                  <td class="py-3 pl-2 text-slate-500 text-xs">趕時間、希望盡快出發時</td>
+                </tr>
+                <tr>
+                  <td class="py-3 pr-2 font-bold text-navy-900">
+                    endorse my ticket to another airline
+                    <button onclick="speakText('endorse my ticket to another airline')" class="ml-1 text-sky-600 hover:text-sky-800">🔊</button>
+                  </td>
+                  <td class="py-3 px-2 text-slate-700">將我的機票轉簽至其他航空公司</td>
+                  <td class="py-3 pl-2 text-slate-500 text-xs">原航空客滿，但友航還有空位時</td>
+                </tr>
+                <tr>
+                  <td class="py-3 pr-2 font-bold text-navy-900">
+                    hotel accommodation & meal vouchers
+                    <button onclick="speakText('hotel accommodation and meal vouchers')" class="ml-1 text-sky-600 hover:text-sky-800">🔊</button>
+                  </td>
+                  <td class="py-3 px-2 text-slate-700">過夜飯店住宿與餐飲抵用券</td>
+                  <td class="py-3 pl-2 text-slate-500 text-xs">因航空公司延誤導致被迫過夜時</td>
+                </tr>
+                <tr>
+                  <td class="py-3 pr-2 font-bold text-navy-900">
+                    transfer my checked baggage automatically
+                    <button onclick="speakText('transfer my checked baggage automatically')" class="ml-1 text-sky-600 hover:text-sky-800">🔊</button>
+                  </td>
+                  <td class="py-3 px-2 text-slate-700">自動將我的托運行李轉掛到新班機</td>
+                  <td class="py-3 pl-2 text-slate-500 text-xs">改票後確認行李是否需要重領</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-4 text-center text-xs text-slate-400">
+    SkyGate Interactive English Hub • 專為情境式英語與自主探索學習設計
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT 邏輯與互動引擎 -->
+  <!-- ========================================== -->
+  <script>
+    // ==========================================
+    // 1. 全域狀態與語音引擎 (Web Speech API)
+    // ==========================================
+    let currentView = 'home';
+    let speechRate = 1.0; // 1.0 正常, 0.72 慢速
+
+    // 切換語速
+    function toggleSpeechRate() {
+      const label = document.getElementById('speed-label');
+      if (speechRate === 1.0) {
+        speechRate = 0.72;
+        label.textContent = '慢速跟讀 (0.7x)';
+        label.classList.remove('text-sky-300');
+        label.classList.add('text-amber-300');
+        showToast('🐢', '已切換為「慢速清晰朗讀模式」，適合跟讀練習！');
+      } else {
+        speechRate = 1.0;
+        label.textContent = '正常 (1.0x)';
+        label.classList.remove('text-amber-300');
+        label.classList.add('text-sky-300');
+        showToast('🐇', '已切換為「正常自然語速」！');
+      }
+    }
+
+    // 瀏覽器內建語音朗讀
+    function speakText(text) {
+      if (!('speechSynthesis' in window)) {
+        showToast('⚠️', '您的瀏覽器不支援語音朗讀功能，建議使用 Chrome 或 Safari。');
+        return;
+      }
+      window.speechSynthesis.cancel(); // 停止前一段語音
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = speechRate;
+      utterance.pitch = 1.0;
+
+      // 嘗試挑選較自然的英語語音
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang.includes('en-US') && (v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Natural')));
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // 預載語音清單
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
+
+    // 自訂非阻斷式 Toast 提示
+    let toastTimer = null;
+    function showToast(icon, msg) {
+      const box = document.getElementById('toast-box');
+      document.getElementById('toast-icon').textContent = icon;
+      document.getElementById('toast-message').textContent = msg;
+      box.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 3200);
+    }
+
+    // 視圖切換 (home / optionA / optionB)
+    function switchView(viewName) {
+      currentView = viewName;
+      document.getElementById('view-home').classList.add('hidden');
+      document.getElementById('view-optionA').classList.add('hidden');
+      document.getElementById('view-optionB').classList.add('hidden');
+
+      document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+      const backBtn = document.getElementById('back-home-btn');
+      if (viewName === 'home') {
+        backBtn.classList.add('hidden');
+        backBtn.classList.remove('flex');
+      } else {
+        backBtn.classList.remove('hidden');
+        backBtn.classList.add('flex');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ==========================================
+    // 2. 選項 A 邏輯：登機報到句型積木與任務驗證
+    // ==========================================
+    const checkinState = {
+      dest: 'tokyo',
+      bags: '1',
+      seat: 'window'
+    };
+
+    const destData = {
+      tokyo: { code: 'TYO', flight: 'FLIGHT JL-802', en: 'Tokyo', zh: '東京' },
+      london: { code: 'LHR', flight: 'FLIGHT BR-067', en: 'London', zh: '倫敦' },
+      newyork: { code: 'JFK', flight: 'FLIGHT CI-012', en: 'New York', zh: '紐約' }
+    };
+
+    const bagsData = {
+      '0': {
+        bpCode: '0 PC',
+        bpDesc: '僅隨身行李',
+        enClause: 'I only have carry-on luggage',
+        zhClause: '我只有隨身手提行李（沒有要托運）'
+      },
+      '1': {
+        bpCode: '1 PC',
+        bpDesc: '1 件托運',
+        enClause: 'I have one bag to check in',
+        zhClause: '我有 1 件行李要托運'
+      },
+      '2': {
+        bpCode: '2 PCS',
+        bpDesc: '2 件托運',
+        enClause: 'I have two bags to check in',
+        zhClause: '我有 2 件行李要托運'
+      }
+    };
+
+    const seatData = {
+      window: {
+        bpCode: 'WINDOW',
+        bpDesc: '靠窗座位',
+        enPhrase: 'a window seat',
+        zhPhrase: '一個靠窗的座位'
+      },
+      aisle: {
+        bpCode: 'AISLE',
+        bpDesc: '靠走道座位',
+        enPhrase: 'an aisle seat',
+        zhPhrase: '一個靠走道的座位'
+      }
+    };
+
+    // 更新選項 A 狀態與畫面
+    function setCheckinVar(key, value) {
+      checkinState[key] = value;
+      // 隱藏舊的通關章
+      document.getElementById('stamp-overlay-A').classList.add('hidden');
+      renderOptionA();
+    }
+
+    function renderOptionA() {
+      const d = destData[checkinState.dest];
+      const b = bagsData[checkinState.bags];
+      const s = seatData[checkinState.seat];
+
+      // 1. 更新按鈕選中樣式
+      document.querySelectorAll('.var-btn-dest').forEach(btn => {
+        const active = btn.dataset.val === checkinState.dest;
+        btn.className = `var-btn-dest py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center ${
+          active ? 'border-sky-600 bg-sky-50 text-sky-900 shadow-xs' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300'
+        }`;
+      });
+      document.querySelectorAll('.var-btn-bags').forEach(btn => {
+        const active = btn.dataset.val === checkinState.bags;
+        btn.className = `var-btn-bags py-3 px-3 rounded-xl border-2 font-bold text-sm transition text-center ${
+          active ? 'border-sky-600 bg-sky-50 text-sky-900 shadow-xs' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300'
+        }`;
+      });
+      document.querySelectorAll('.var-btn-seat').forEach(btn => {
+        const active = btn.dataset.val === checkinState.seat;
+        btn.className = `var-btn-seat py-3 px-4 rounded-xl border-2 font-bold text-sm transition text-center ${
+          active ? 'border-sky-600 bg-sky-50 text-sky-900 shadow-xs' : 'border-slate-200 bg-white text-slate-600 hover:border-sky-300'
+        }`;
+      });
+
+      // 2. 更新登機證視覺看板
+      document.getElementById('bp-flight-no').textContent = d.flight;
+      document.getElementById('bp-dest-code').textContent = d.code;
+      document.getElementById('bp-dest-name').textContent = `${d.en} ${d.zh}`;
+      document.getElementById('bp-bag-count').textContent = b.bpCode;
+      document.getElementById('bp-bag-desc').textContent = b.bpDesc;
+      document.getElementById('bp-seat-code').textContent = s.bpCode;
+      document.getElementById('bp-seat-desc').textContent = s.bpDesc;
+
+      // 3. 組合句型積木（用不同色塊區分骨架與替換詞彙）
+      const enHtml = `
+        <span class="text-slate-200">Hi, I'm flying to</span>
+        <span class="inline-block bg-sky-500/30 border border-sky-400 text-sky-200 font-extrabold px-2 py-0.5 rounded-lg mx-0.5">${d.en}</span><span class="text-slate-200">.</span>
+        <span class="inline-block bg-emerald-500/30 border border-emerald-400 text-emerald-200 font-extrabold px-2 py-0.5 rounded-lg mx-0.5">${b.enClause}</span><span class="text-slate-200">. Could I have</span>
+        <span class="inline-block bg-amber-500/30 border border-amber-400 text-amber-200 font-extrabold px-2 py-0.5 rounded-lg mx-0.5">${s.enPhrase}</span><span class="text-slate-200">, please?</span>
+      `;
+      document.getElementById('assembled-english').innerHTML = enHtml;
+
+      const zhText = `你好，我要飛往「${d.zh}」。${b.zhClause}。請問可以給我「${s.zhPhrase}」嗎？`;
+      document.getElementById('assembled-chinese').textContent = zhText;
+    }
+
+    function getPlainAssembledEnglish() {
+      const d = destData[checkinState.dest];
+      const b = bagsData[checkinState.bags];
+      const s = seatData[checkinState.seat];
+      return `Hi, I'm flying to ${d.en}. ${b.enClause}. Could I have ${s.enPhrase}, please?`;
+    }
+
+    function speakAssembledSentence() {
+      speakText(getPlainAssembledEnglish());
+    }
+
+    // 選項 A 任務系統
+    const tasksA = [
+      {
+        dest: 'london', bags: '2', seat: 'aisle',
+        prompt: '請幫自己辦理飛往「倫敦 (London)」的登機，你有「2 件大行李」要托運，而且希望坐在「靠走道」方便起身。'
+      },
+      {
+        dest: 'newyork', bags: '0', seat: 'window',
+        prompt: '你這趟去「紐約 (New York)」只帶了隨身登機箱（「0 件托運」），想選「靠窗」的座位看風景。'
+      },
+      {
+        dest: 'tokyo', bags: '1', seat: 'window',
+        prompt: '你要飛往「東京 (Tokyo)」旅遊，有「1 件行李」要托運，並希望地勤安排「靠窗」座位。'
+      },
+      {
+        dest: 'london', bags: '1', seat: 'aisle',
+        prompt: '商務出差飛往「倫敦 (London)」，需要托運「1 件行李」，並需要「靠走道」座位方便使用筆電進出。'
+      }
+    ];
+    let currentTaskAIndex = 0;
+
+    function loadTaskA(index) {
+      const task = tasksA[index];
+      document.getElementById('task-a-number').textContent = index + 1;
+      document.getElementById('task-a-prompt').textContent = task.prompt;
+      const fb = document.getElementById('task-a-feedback');
+      fb.classList.add('hidden');
+      document.getElementById('stamp-overlay-A').classList.add('hidden');
+    }
+
+    function generateNewTaskA() {
+      currentTaskAIndex = (currentTaskAIndex + 1) % tasksA.length;
+      loadTaskA(currentTaskAIndex);
+      showToast('🎯', '已為你指派新的櫃檯報到任務！');
+    }
+
+    function verifyTaskA() {
+      const target = tasksA[currentTaskAIndex];
+      const fb = document.getElementById('task-a-feedback');
+      fb.classList.remove('hidden');
+
+      const errors = [];
+      if (checkinState.dest !== target.dest) {
+        errors.push(`• 目的地還不對喔！任務是要飛往「${destData[target.dest].zh} (${destData[target.dest].en})」。`);
+      }
+      if (checkinState.bags !== target.bags) {
+        errors.push(`• 行李件數再檢查一下！任務需要「${bagsData[target.bags].bpDesc} (${bagsData[target.bags].enClause})」。`);
+      }
+      if (checkinState.seat !== target.seat) {
+        errors.push(`• 座位偏好調整一下喔！任務想要的是「${seatData[target.seat].bpDesc} (${seatData[target.seat].enPhrase})」。`);
+      }
+
+      if (errors.length === 0) {
+        fb.className = 'p-4 rounded-2xl text-sm font-medium leading-relaxed border bg-emerald-50 border-emerald-300 text-emerald-900';
+        fb.innerHTML = `
+          <div class="font-extrabold text-base text-emerald-800 mb-1">🎉 太棒了！報到成功！(Check-in Complete)</div>
+          <p>地勤人員已經順利幫你印出登機證並托運行李！你可以點擊上方的「🔊 朗讀這句英文」大聲練習一遍喔！</p>
+        `;
+        document.getElementById('stamp-overlay-A').classList.remove('hidden');
+        speakAssembledSentence();
+        launchConfetti();
+      } else {
+        fb.className = 'p-4 rounded-2xl text-sm font-medium leading-relaxed border bg-amber-50 border-amber-300 text-amber-900';
+        fb.innerHTML = `
+          <div class="font-extrabold text-amber-800 mb-1">💡 差一點點就成功了！請參考鷹架提示調整：</div>
+          <div class="space-y-1 text-xs sm:text-sm">${errors.join('<br>')}</div>
+        `;
+      }
+    }
+
+    // ==========================================
+    // 3. 選項 B 邏輯：轉機協商雙策略對比與決策任務
+    // ==========================================
+    let currentScenarioB = 1;
+
+    const scenariosBData = {
+      1: {
+        // 情況一：明早有重要會議，必須今晚抵達
+        stratA: {
+          polite: 95, assert: 40, eff: 55,
+          en: "Excuse me, my first flight was delayed. Could you possibly check if there are any seats left tonight? I really hope I can make my meeting tomorrow.",
+          zh: "不好意思，我的第一班飛機延誤了。請問您能不能幫我查一下今晚還有沒有剩餘的機位？我真的很希望能趕上明天的會議。",
+          note: "語氣非常客氣，但缺乏明確訴求（例如要求轉簽友航）。在轉機櫃檯大排長龍時，地勤可能只會回答「今晚本航客滿」就請你明天再飛。"
+        },
+        stratB: {
+          polite: 78, assert: 95, eff: 94,
+          en: "Hi, since my incoming flight was delayed, I missed my connection. I have an urgent meeting tomorrow morning, so I need to be put on the next available flight tonight, even on a partner airline.",
+          zh: "你好，因為我的前段班機延誤導致沒趕上轉機。我明早有緊急會議，因此我需要安排今晚最快有機位的航班，即使是轉簽合作航空也可以。",
+          note: "先禮貌說明原因（airline delay 責任歸屬），再具體提出解決方案（next available flight / partner airline），讓地勤能立刻著手幫你查詢轉簽！"
+        }
+      },
+      2: {
+        // 情況二：今晚已無任何班機，需過夜安置
+        stratA: {
+          polite: 95, assert: 35, eff: 50,
+          en: "Oh no, there are no flights until tomorrow? Where am I supposed to sleep tonight? Could you maybe help me find a hotel nearby?",
+          zh: "天啊，要到明天才有飛機嗎？那我今晚要睡哪裡？請問你可以幫我找一下附近的飯店嗎？",
+          note: "聽起來像是你自己要花錢找飯店，地勤可能會只給你一張附近旅館的清單，而不會主動開立「航空公司免費住宿券」！"
+        },
+        stratB: {
+          polite: 80, assert: 92, eff: 95,
+          en: "I understand there are no more flights tonight. Since this delay was caused by the airline, could you please confirm my seat for tomorrow morning and provide hotel accommodation and meal vouchers?",
+          zh: "我了解今晚已經沒有航班了。由於這次延誤是航空公司造成的，請問可以幫我確認明早的機位，並提供過夜飯店住宿與餐券嗎？",
+          note: "冷靜且不卑不亢！明確點出因航班延誤所需的法定/常規安置權益（hotel accommodation & meal vouchers），並同時鎖定明早機位。"
+        }
+      }
+    };
+
+    function setScenarioB(num) {
+      currentScenarioB = num;
+      const btn1 = document.getElementById('scen-b-btn-1');
+      const btn2 = document.getElementById('scen-b-btn-2');
+
+      if (num === 1) {
+        btn1.className = 'p-4 rounded-2xl border-2 border-amber-400 bg-amber-500/20 text-white text-left transition flex items-start gap-3 shadow-md';
+        btn2.className = 'p-4 rounded-2xl border-2 border-slate-700 bg-navy-800/60 text-slate-300 hover:border-slate-500 text-left transition flex items-start gap-3';
+      } else {
+        btn2.className = 'p-4 rounded-2xl border-2 border-amber-400 bg-amber-500/20 text-white text-left transition flex items-start gap-3 shadow-md';
+        btn1.className = 'p-4 rounded-2xl border-2 border-slate-700 bg-navy-800/60 text-slate-300 hover:border-slate-500 text-left transition flex items-start gap-3';
+      }
+
+      const data = scenariosBData[num];
+      // 更新策略 A
+      document.getElementById('strat-a-polite-val').textContent = data.stratA.polite + '%';
+      document.getElementById('strat-a-polite-bar').style.width = data.stratA.polite + '%';
+      document.getElementById('strat-a-assert-val').textContent = data.stratA.assert + '%';
+      document.getElementById('strat-a-assert-bar').style.width = data.stratA.assert + '%';
+      document.getElementById('strat-a-eff-val').textContent = data.stratA.eff + '%';
+      document.getElementById('strat-a-eff-bar').style.width = data.stratA.eff + '%';
+      document.getElementById('strat-a-en').textContent = `"${data.stratA.en}"`;
+      document.getElementById('strat-a-zh').textContent = data.stratA.zh;
+      document.getElementById('strat-a-note').textContent = data.stratA.note;
+
+      // 更新策略 B
+      document.getElementById('strat-b-polite-val').textContent = data.stratB.polite + '%';
+      document.getElementById('strat-b-polite-bar').style.width = data.stratB.polite + '%';
+      document.getElementById('strat-b-assert-val').textContent = data.stratB.assert + '%';
+      document.getElementById('strat-b-assert-bar').style.width = data.stratB.assert + '%';
+      document.getElementById('strat-b-eff-val').textContent = data.stratB.eff + '%';
+      document.getElementById('strat-b-eff-bar').style.width = data.stratB.eff + '%';
+      document.getElementById('strat-b-en').textContent = `"${data.stratB.en}"`;
+      document.getElementById('strat-b-zh').textContent = data.stratB.zh;
+      document.getElementById('strat-b-note').textContent = data.stratB.note;
+    }
+
+    function speakStrategy(which) {
+      const data = scenariosBData[currentScenarioB];
+      const text = which === 'A' ? data.stratA.en : data.stratB.en;
+      speakText(text);
+    }
+
+    // 選項 B 決策挑戰題庫
+    const tasksB = [
+      {
+        situation: '地勤告訴你：「我們航空今晚飛往倫敦的班機已經客滿了。」但你明早 9 點必須參加親友婚禮，且你有一件托運行李還在機場系統裡。哪一句回應最有效且得體？',
+        options: [
+          {
+            label: '選項 1（情緒抱怨式）',
+            en: "This is ridiculous! You guys made me miss my flight, so you must fix this right now or I'm going to complain!",
+            zh: "這太荒謬了！是你們害我錯過飛機的，你們現在必須馬上處理，不然我要客訴！",
+            isCorrect: false,
+            reason: "過度情緒化與指責容易讓第一線地勤產生防衛心，反而降低主動幫你尋找特殊替代方案的意願，且沒有提出具體需求。"
+          },
+          {
+            label: '選項 2（具體協商＋行李確認）',
+            en: "I understand your flights are full, but I have a wedding tomorrow morning. Could you check if you can endorse my ticket to a partner airline tonight, and ensure my checked bag is transferred?",
+            zh: "我理解貴公司班機已滿，但我明早有婚禮要參加。請問能否幫我查詢今晚轉簽至合作航空，並確保我的托運行李一併轉掛過去？",
+            isCorrect: true,
+            reason: "完全命中核心！先表達理解，接著精準提出「轉簽合作航空 (endorse my ticket to a partner airline)」與「行李轉掛 (checked bag is transferred)」，既禮貌又高效！"
+          },
+          {
+            label: '選項 3（消極退讓式）',
+            en: "Oh, okay... If it's full, I guess I will just sit here and wait until tomorrow afternoon. Sorry to bother you.",
+            zh: "喔，好吧……如果客滿的話，我想我只好坐在這裡等到明天下午了。抱歉打擾你。",
+            isCorrect: false,
+            reason: "雖然非常有禮貌，但完全放棄了爭取轉簽或其他替代方案的權益，會讓你錯過明早的重要婚禮喔！"
+          }
+        ]
+      },
+      {
+        situation: '因為暴風雪與機械檢修，機場今晚所有飛往東京的航班都取消了，必須等到明天早上 7 點才有飛機。你身無分文也不熟當地環境，該怎麼向地勤爭取權益？',
+        options: [
+          {
+            label: '選項 1（明確提出過夜安置需求）',
+            en: "Since tonight's flights are canceled, could you please rebook me on the 7 AM flight tomorrow and provide a hotel voucher and meal allowance for tonight?",
+            zh: "既然今晚的航班都取消了，請問可以幫我改訂明早 7 點的班機，並提供今晚的飯店住宿券與餐費補助嗎？",
+            isCorrect: true,
+            reason: "非常專業且得體！同時鎖定「明早 7 點機位 (rebook me on the 7 AM flight)」與「住宿餐券 (hotel voucher & meal allowance)」，一次解決兩個最迫切的問題。"
+          },
+          {
+            label: '選項 2（只問有沒有水喝）',
+            en: "Excuse me, I'm really tired and hungry. Do you have any free water or snacks here at the counter?",
+            zh: "不好意思，我又累又餓。請問櫃檯這裡有免費的水或零食嗎？",
+            isCorrect: false,
+            reason: "只解決了當下的口渴，卻忘了最重要的「明早機位確認」與「今晚過夜住宿安排」。"
+          },
+          {
+            label: '選項 3（空泛要求賠償）',
+            en: "You canceled my flight! Give me money right now so I can go buy a new ticket myself!",
+            zh: "你們取消了我的航班！現在馬上給我現金，我自己去買一張新機票！",
+            isCorrect: false,
+            reason: "地勤櫃檯通常無法直接發放現金讓你自行購票，要求航空公司直接幫你「改訂機位 (rebook)」與開立「住宿券 (voucher)」才是正確流程。"
+          }
+        ]
+      }
+    ];
+    let currentTaskBIndex = 0;
+
+    function loadTaskB(index) {
+      const task = tasksB[index];
+      document.getElementById('task-b-number').textContent = index + 1;
+      document.getElementById('task-b-situation').textContent = task.situation;
+      document.getElementById('stamp-overlay-B').classList.add('hidden');
+
+      const fb = document.getElementById('task-b-feedback');
+      fb.classList.add('hidden');
+
+      const container = document.getElementById('task-b-options');
+      container.innerHTML = '';
+
+      task.options.forEach((opt, idx) => {
+        const btn = document.createElement('div');
+        btn.className = 'p-4 rounded-2xl border-2 border-slate-200 hover:border-amber-400 bg-slate-50/60 hover:bg-amber-50/40 cursor-pointer transition space-y-1.5';
+        btn.onclick = () => selectTaskBOption(idx);
+        btn.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-lg">${opt.label}</span>
+            <button type="button" onclick="event.stopPropagation(); speakText(\`${opt.en.replace(/"/g, '\\"')}\`)" class="text-xs px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-600 hover:text-navy-900 font-semibold">
+              🔊 試聽
+            </button>
+          </div>
+          <p class="text-sm font-bold text-navy-900 leading-snug">"${opt.en}"</p>
+          <p class="text-xs text-slate-500">${opt.zh}</p>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function selectTaskBOption(optIndex) {
+      const task = tasksB[currentTaskBIndex];
+      const chosen = task.options[optIndex];
+      const fb = document.getElementById('task-b-feedback');
+      fb.classList.remove('hidden');
+
+      if (chosen.isCorrect) {
+        fb.className = 'p-4 rounded-2xl text-sm leading-relaxed border bg-emerald-50 border-emerald-300 text-emerald-900';
+        fb.innerHTML = `
+          <div class="font-extrabold text-base text-emerald-800 mb-1">🏆 決策精準！完美協商成功！</div>
+          <p>${chosen.reason}</p>
+        `;
+        document.getElementById('stamp-overlay-B').classList.remove('hidden');
+        speakText(chosen.en);
+        launchConfetti();
+      } else {
+        fb.className = 'p-4 rounded-2xl text-sm leading-relaxed border bg-rose-50 border-rose-200 text-rose-900';
+        fb.innerHTML = `
+          <div class="font-extrabold text-rose-800 mb-1">🤔 再想一想喔！這個回應可能達不到最佳效果：</div>
+          <p>${chosen.reason}</p>
+        `;
+      }
+    }
+
+    function nextTaskB() {
+      currentTaskBIndex = (currentTaskBIndex + 1) % tasksB.length;
+      loadTaskB(currentTaskBIndex);
+      showToast('🧠', '已切換至下一個轉機危機情境！');
+    }
+
+    // ==========================================
+    // 4. 慶祝彩帶動畫特效 (Canvas Confetti)
+    // ==========================================
+    function launchConfetti() {
+      const canvas = document.getElementById('confetti-canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const colors = ['#0284C7', '#F59E0B', '#10B981', '#38BDF8', '#FBBF24', '#F43F5E'];
+      const particles = [];
+
+      for (let i = 0; i < 90; i++) {
+        particles.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 200,
+          y: canvas.height / 2,
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 0.8) * 14 - 4,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          vRot: (Math.random() - 0.5) * 10
+        });
+      }
+
+      let frame = 0;
+      function animateConfetti() {
+        frame++;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.35; // 重力
+          p.rotation += p.vRot;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          ctx.restore();
+        });
+
+        if (frame < 110) {
+          requestAnimationFrame(animateConfetti);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      animateConfetti();
+    }
+
+    // ==========================================
+    // 5. 初始化頁面
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderOptionA();
+      loadTaskA(0);
+      setScenarioB(1);
+      loadTaskB(0);
+    });
+  </script>
+</body>
+</html>
